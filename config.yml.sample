@@ -1,0 +1,70 @@
+---
+linked_reactors:
+  copy_s3_uploads:
+    id: uploads-manager.prod
+    ignore_err: False
+routing:
+  prefetch_count: 1
+  exchange:
+    name: filesystem-events
+    type: fanout
+    durable: True
+  source:
+    queue: uploads_monitor
+    routing_key: storage.s3
+    durable: True
+    exclusive: False
+    x-args:
+      x-queue-mode: lazy
+      x-max-length: 10000
+cloud_amqp:
+  uri: amqp://pzvcwr:N89QkZin9BPkux35W_kJkv19U9Bjbk5b@beluga.rmq.cloudamqp.com/jrpzcdwt
+api:
+  server: https://api.sd2e.org
+  username: sd2eadm
+  password: c6k4H5jQpSz7oT4ZWCtB
+  clients:
+    worker1:
+      api_key: tjkLXeL_z0q_nbSCZBYtamXJvwka
+      api_secret: i50O3DsH8vS2mTHbOPtF9gKahzwa
+    worker2:
+      api_key: VndUWCzRiwzntKlfwGxJQg6AnjUa
+      api_secret: WXf5Rkz6_eGwQ1WDfLg4vxYF4_wa
+    worker3:
+      api_key: Xv8HL1RHZLcpNtBO8fwFiS4jCVIa
+      api_secret: KUlsIoYHxWJsvxQjDhHLSL7v_pQa
+    worker4:
+      api_key: feMBUVkGLT96sMxOJFD11yW_fVoa
+      api_secret: YbOfXMtUGxcOCaRLwqzy8WT5k8Ia
+logs:
+  level: DEBUG
+  token: LnFC3crQt62es9TY
+filter:
+  strategy: all
+  case_sensitive: True
+  rules:
+    - contains(EventType, 's3:ObjectCreated:')
+task_queue:
+  rabbitmq:
+    username: user
+    password: WuLG82bHMpX4xSbj
+mongodb:
+  port: 27020
+  database: catalog_dev
+  host: catalog.sd2e.com
+  username: catalog
+  password: 3!8c2jX*mWMGc&H+*%!VC?NNpaY$
+  collection: _s3events
+storage_system: data-sd2e-community
+actor_id: uploads-manager.prod
+mailgun:
+  subject: "Notification from SD2E"
+  sender: bounces@sd2e.com
+  recipient: notifications@sd2e.com
+  api_key: key-2290b6503c3497ed0cceeaa2f2602ed0cb23
+  api_url: https://api.mailgun.net/v3/sd2e.com/messages
+slack:
+  webhook: https://hooks.slack.com/services/T5U0UCZFT/9QFJUBQEA/tP8AQhUo2ygqAL7NGlw2igsm
+  channel: notifications
+  username: uploads-manager
+  icon_emoji: ":robot_face:"

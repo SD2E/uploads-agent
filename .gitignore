@@ -1,0 +1,8 @@
+*.pyc
+.DS_Store
+ACTOR_ID
+config.yml
+env/
+*.log
+app/
+.vscode/

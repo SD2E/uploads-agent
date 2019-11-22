@@ -1,0 +1,7 @@
+agavepy
+celery[redis]
+celery-singleton
+flower
+pika
+pymongo
+requests
