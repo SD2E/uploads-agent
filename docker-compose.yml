@@ -14,22 +14,32 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379
     networks:
       - app-tier
-    entrypoint: celery -A proj worker -l debug -n worker1@%h
+    entrypoint: celery -A proj worker --beat -Ofair -l debug -n worker1@%h
   celery_w2:
     extends: celery_w1
     environment:
       - RABBITMQ_WORKER_NAME=worker2
-    entrypoint: celery -A proj worker -l debug -n worker2@%h
+    entrypoint: celery -A proj worker -Ofair -l debug -n worker2@%h
   celery_w3:
     extends: celery_w1
     environment:
       - RABBITMQ_WORKER_NAME=worker3
-    entrypoint: celery -A proj worker -l debug -n worker3@%h
+    entrypoint: celery -A proj worker -Ofair -l debug -n worker3@%h
   celery_w4:
     extends: celery_w1
     environment:
       - RABBITMQ_WORKER_NAME=worker4
-    entrypoint: celery -A proj worker -l debug -n worker4@%h
+    entrypoint: celery -A proj worker -Ofair -l debug -n worker4@%h
+  celery_beat:
+    extends: celery_w1
+    environment:
+      - RABBITMQ_WORKER_NAME=beat
+    entrypoint: celery -A proj beat
+    healthcheck:
+      test: exit 0
+      interval: 5m
+      timeout: 10s
+      retries: 3
   flower_app:
     extends: celery_w1
     depends_on:
