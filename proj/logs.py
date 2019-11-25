@@ -5,7 +5,13 @@ from .config import settings
 import logging
 
 # possible log levels
-LEVELS = ('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG',)
+LEVELS = (
+    'CRITICAL',
+    'ERROR',
+    'WARNING',
+    'INFO',
+    'DEBUG',
+)
 
 # default log file to be used when using the the combined strategy
 LOG_FILE = 'director.log'

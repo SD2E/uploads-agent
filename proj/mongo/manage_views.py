@@ -12,13 +12,20 @@ drop(view(idb,view_name) - drops the view (has to be a view)
 
 """
 
+
 def createView(idb, view_name, view_definition):
     viewOn = view_definition["view_on"]
     pipeline = view_definition["pipeline"]
     idb.command('create', view_name, viewOn=viewOn, pipeline=pipeline)
 
+
 def getView(idb, view_name):
-    return idb.command('listCollections', filter={'name': view_name, 'type': 'view'})
+    return idb.command('listCollections',
+                       filter={
+                           'name': view_name,
+                           'type': 'view'
+                       })
+
 
 def dropView(idb, view_name):
     test = getView(idb, view_name)

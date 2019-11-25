@@ -12,7 +12,6 @@ settings = {}
 HERE = os.path.dirname(os.path.abspath(__file__))
 PWD = os.getcwd()
 ROOT = '/'
-
 '''
 Implements some configuration conventions:
 

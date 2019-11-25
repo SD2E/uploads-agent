@@ -1,6 +1,8 @@
 from __future__ import absolute_import, unicode_literals
 from celery import Celery
+from celery.schedules import crontab
 import os
+WORKER_NAME = os.environ.get('RABBITMQ_WORKER_NAME', 'celery_worker')
 
 username = os.environ.get('RABBITMQ_USERNAME', 'guest')
 password = os.environ.get('RABBITMQ_PASSWORD', 'guest')
@@ -16,13 +18,58 @@ app = Celery('proj',
                       'proj.actors_actions',
                       'proj.fsevents_actions',
                       'proj.notification_actions',
+                      'proj.periodic_actions',
                       'proj.test_actions',
                       'proj.tasks'])
+
+
+# @app.on_after_configure.connect
+# def setup_periodic_tasks(sender, **kwargs):
+
+#     # Calls test('world') every 30 seconds
+#     sender.add_periodic_task(60.0, proj.notification_actions.slack_message.s(
+#         'Test Celery.beat'), expires=10)
+
+#     # # Executes every Friday @ 5 PM
+#     # sender.add_periodic_task(
+#     #     crontab(hour=17, minute=00, day_of_week=5),
+#     #     proj.periodic_actions.weekly.s(),
+
 
 # Optional configuration, see the application user guide.
 app.conf.update(
     result_expires=36000,
 )
+
+# Set up beat schedule
+app.conf.beat_schedule = {
+    # Standalone beat task - confirms the scheduler is running
+    'slack-heartbeat-60-min': {
+        'task': 'proj.notification_actions.slack_message',
+        'schedule': crontab(minute=15, hour='*/1'),
+        'args': (':heart: Heartbeat - Uploads Manager {0}'.format(WORKER_NAME),)
+    },
+    # Every hour on the hour
+    'batch-hourly': {
+        'task': 'proj.periodic_actions.hourly',
+        'schedule': crontab(minute=0, hour='*/1')
+    },
+    # Every day at 5:05 PM
+    'batch-daily': {
+        'task': 'proj.periodic_actions.daily',
+        'schedule': crontab(minute=5, hour=17)
+    },
+    # Every week Friday 5:10 PM
+    'batch-weekly': {
+        'task': 'proj.periodic_actions.weekly',
+        'schedule': crontab(minute=10, hour=17, day_of_week=5)
+    },
+    # First of every month 5:15
+    'batch-monthly': {
+        'task': 'proj.periodic_actions.weekly',
+        'schedule': crontab(minute=15, hour=17, day_of_month=1)
+    },
+}
 
 if __name__ == '__main__':
     app.start()

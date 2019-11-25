@@ -1,5 +1,7 @@
+"""Enumeration of states for fsevents.state
+"""
 CREATED = 'CREATED'
-PROCESSING = 'PROCESSING'
+RUNNING = 'RUNNING'
 FINISHED = 'FINISHED'
 FAILED = 'FAILED'
 UPDATED = 'UPDATED'

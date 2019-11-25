@@ -11,20 +11,24 @@ except ImportError:
     # Python 2.x
     from urllib.parse import quote_plus
 
+
 def get_mongo_uri(mongodct={}):
     uri = None
     if 'username' in mongodct:
-        uri = "mongodb://%s:%s@%s:%s/%s" % (quote_plus(mongodct.get('username', settings.MONGODB_USERNAME)),
-                                            quote_plus(mongodct.get('password', settings.MONGODB_USERNAME)),
-                                            mongodct.get('host', settings.MONGODB_HOST),
-                                            mongodct.get('port', settings.MONGODB_PORT),
-                                            mongodct.get('auth_source', settings.MONGODB_AUTH_DATABASE))
+        uri = "mongodb://%s:%s@%s:%s/%s" % (
+            quote_plus(mongodct.get('username', settings.MONGODB_USERNAME)),
+            quote_plus(mongodct.get('password', settings.MONGODB_USERNAME)),
+            mongodct.get('host', settings.MONGODB_HOST),
+            mongodct.get('port', settings.MONGODB_PORT),
+            mongodct.get('auth_source', settings.MONGODB_AUTH_DATABASE))
     elif 'authn' in mongodct:
         # base64 encoded connection string suitable for setting as a container secret
-        uri = decode_authn_string(mongodct.get('authn', settings.MONGODB_AUTHN))
+        uri = decode_authn_string(mongodct.get('authn',
+                                               settings.MONGODB_AUTHN))
     else:
         raise ValueError('Unable to parse MongoDB connection details')
     return uri
+
 
 def db_connection(mongodct):
     """Get an active MongoDB connection

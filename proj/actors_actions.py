@@ -8,14 +8,20 @@ from .notification_actions import notify_failure
 
 
 class ActorExecutionInProgress(Exception):
-    """Raisable when a task execution has not run to completion
+    """Raise when a task execution has not run to completion
     """
     pass
 
 
-@app.task(bind=True, base=Singleton)
+# Task must launch within 8 hours
+@app.task(bind=True,
+          autoretry_for=(AgaveError, ),
+          retry_backoff=True,
+          time_limit=28800)
 def upload_launch(self, key_event_id):
     """Launch instance of Abaco upload manager
+
+    Retries failed attempts using exponential backoff
 
     Arguments:
         key_event_id (tuple): (key:str, x-amz-request-id:str)
@@ -33,20 +39,31 @@ def upload_launch(self, key_event_id):
                api_secret=settings['api']['clients'][worker]['api_secret'])
     msg = {
         'uri': 's3://{0}'.format(key_event_id[0]),
-        'event_id': key_event_id[1]}
+        'event_id': key_event_id[1]
+    }
     try:
-        resp = ag.actors.sendMessage(
-            actorId=settings['actor_id'],
-            body={'message': msg})
+        resp = ag.actors.sendMessage(actorId=settings['actor_id'],
+                                     body={'message': msg})
     except Exception as exc:
         raise AgaveError('Failed to launch task: {0}'.format(exc))
 
     return (settings['actor_id'], resp['executionId'], key_event_id[1])
 
 
-@app.task(bind=True, default_retry_delay=1, max_retries=60)
+# Task must complete within a day
+@app.task(bind=True,
+          autoretry_for=(
+              AgaveError,
+              ActorExecutionInProgress,
+          ),
+          retry_backoff=True,
+          default_retry_delay=1,
+          max_retries=60,
+          time_limit=86400)
 def upload_monitor(self, actor_exec_event, *args, **kwargs):
-    """Monitor running instance of Abaco uploads manager
+    """Monitor a running instance of Abaco uploads manager
+
+    Implements polling via Celery retry
 
     Arguments:
         actor_exec_event (tuple): (actor_id:str, execution_id:str, event_id:str)
@@ -64,14 +81,17 @@ def upload_monitor(self, actor_exec_event, *args, **kwargs):
                password=settings['api']['password'],
                api_key=settings['api']['clients'][worker]['api_key'],
                api_secret=settings['api']['clients'][worker]['api_secret'])
+
     try:
-        status = ag.actors.getExecution(
-            actorId=actor_id, executionId=execution_id).get('status', None)
-        # synchronous (for now) - update the event record
-        fsevent_update.s((event_id, status)).apply_async()
-        if status not in ['COMPLETE', 'ERROR']:
-            raise ActorExecutionInProgress
-        else:
-            return (actor_id, execution_id, status, event_id)
-    except (ActorExecutionInProgress) as exc:
-        raise self.retry(exc=exc)
+        status = ag.actors.getExecution(actorId=actor_id,
+                                        executionId=execution_id).get(
+                                            'status', None)
+    except Exception as exc:
+        raise AgaveError('Failed to poll task: {0}'.format(exc))
+
+    fsevent_update.s((event_id, status)).apply_async()
+
+    if status not in ['COMPLETE', 'ERROR']:
+        raise ActorExecutionInProgress
+    else:
+        return (actor_id, execution_id, status, event_id)

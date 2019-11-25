@@ -1,3 +1,4 @@
+import datetime
 import pymongo
 from bson.objectid import ObjectId
 
@@ -15,8 +16,8 @@ except ImportError:
 
 def db_collection(collection=None):
     uri = 'mongodb://{0}:{1}@{2}:{3}/'.format(
-        quote_plus(settings['mongodb']['username']
-                   ), quote_plus(settings['mongodb']['password']),
+        quote_plus(settings['mongodb']['username']),
+        quote_plus(settings['mongodb']['password']),
         settings['mongodb']['host'], settings['mongodb']['port'])
     client = pymongo.MongoClient(uri)
     db = client[settings['mongodb']['database']]
@@ -25,24 +26,30 @@ def db_collection(collection=None):
     return db[collection]
 
 
-@app.task
-def fsevent_create(event):
+@app.task(bind=True, time_limit=3600)
+def fsevent_create(self, event):
     """Store a filesystem event in MongoDB
     """
     dbc = db_collection()
-    x_amz_request_id = event.get('Records')[0].get(
-        'responseElements').get('x-amz-request-id')
-    document = {'body': event,
-                'id': x_amz_request_id,
-                'state': fsevents.CREATED,
-                'history': []
-                }
+    x_amz_request_id = event.get('Records')[0].get('responseElements').get(
+        'x-amz-request-id')
+    history_entry = {
+        'state': fsevents.CREATED,
+        'message': None,
+        'timestamp': datetime.datetime.now()
+    }
+    document = {
+        'body': event,
+        'id': x_amz_request_id,
+        'state': fsevents.CREATED,
+        'history': [history_entry]
+    }
     record_id = dbc.insert_one(document).inserted_id
     return str(record_id)
 
 
-@app.task
-def fsevent_get_key_id(record_id):
+@app.task(bind=True, time_limit=3600)
+def fsevent_get_key_id(self, record_id):
     """Get key for the designated filesystem record
     """
     dbc = db_collection()
@@ -53,12 +60,45 @@ def fsevent_get_key_id(record_id):
     return (key, event_id)
 
 
-@app.task
-def fsevent_update(event_id_status):
+@app.task(bind=True, time_limit=3600)
+def fsevent_update(self, event_id_status):
     """Update a filesystem event record with latest status
     """
     event_id = event_id_status[0]
     status = event_id_status[1]
     dbc = db_collection()
-    dbc.update_one({'id': event_id}, {'$set': {'state': status}}, upsert=True)
+    history_entry = {
+        'state': status,
+        'message': None,
+        'timestamp': datetime.datetime.now()
+    }
+    dbc.update_one({'id': event_id}, {
+        '$set': {
+            'state': status
+        },
+        '$push': {
+            'history': history_entry
+        }
+    },
+                   upsert=True)
+    return (event_id, status)
+
+
+@app.task(bind=True, time_limit=3600)
+def fsevent_log(self, event_id_status_message):
+    """Amend filesystem event history with a logging message
+    """
+    event_id = event_id_status_message[0]
+    status = event_id_status_message[1]
+    message = event_id_status_message[2]
+    dbc = db_collection()
+    history_entry = {
+        'state': fsevents.UPDATED,
+        'message': message,
+        'timestamp': datetime.datetime.now()
+    }
+    dbc.update_one({'id': event_id}, {'$push': {
+        'history': history_entry
+    }},
+                   upsert=True)
     return (event_id, status)
