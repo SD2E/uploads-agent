@@ -68,3 +68,9 @@ slack:
   channel: notifications
   username: uploads-manager
   icon_emoji: ":robot_face:"
+notifications:
+  email: True
+  slack: True
+requests:
+  connect_timeout: 5.0
+  read_timeout: 30.0

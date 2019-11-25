@@ -41,3 +41,21 @@ Managing the System
 -------------------
 
 TBD
+
+Notifications
+-------------
+
+The system is capable of sending notifications via email (using Mailgun) or
+Slack. Configuration for which configuration channels to use is at
+``config.yml#notifications``. Mailgun configured by ``config.yml#mailgun`` and
+Slack by ``config.yml#slack``. As these are mediated by web service APIs
+(and to prevent filling people's inboxes), these calls are rate-limited.
+These rates are configurable by editing the task definitions.
+
+Periodic Tasks
+--------------
+
+The system has three periodic tasks configured in ``proj/periodic_actions.py``.
+Specific actions can be added to this module, and are expected to be added to
+the ``daily``, ``weekly``, and ``monthly`` group tasks defined at the
+top of the module.
