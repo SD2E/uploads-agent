@@ -14,32 +14,14 @@ app = Celery('proj',
              broker='amqp://{0}:{1}@{2}:{3}/{4}'.format(
                  username, password, hostname, port, vhost),
              backend='redis://redis:6379',
-             include=['proj.signals',
-                      'proj.actors_actions',
-                      'proj.fsevents_actions',
-                      'proj.notification_actions',
-                      'proj.periodic_actions',
-                      'proj.test_actions',
-                      'proj.tasks'])
-
-
-# @app.on_after_configure.connect
-# def setup_periodic_tasks(sender, **kwargs):
-
-#     # Calls test('world') every 30 seconds
-#     sender.add_periodic_task(60.0, proj.notification_actions.slack_message.s(
-#         'Test Celery.beat'), expires=10)
-
-#     # # Executes every Friday @ 5 PM
-#     # sender.add_periodic_task(
-#     #     crontab(hour=17, minute=00, day_of_week=5),
-#     #     proj.periodic_actions.weekly.s(),
-
+             include=[
+                 'proj.signals', 'proj.actors_actions',
+                 'proj.fsevents_actions', 'proj.notification_actions',
+                 'proj.periodic_actions', 'proj.test_actions', 'proj.tasks'
+             ])
 
 # Optional configuration, see the application user guide.
-app.conf.update(
-    result_expires=36000,
-)
+app.conf.update(result_expires=36000, )
 
 # Set up beat schedule
 app.conf.beat_schedule = {
@@ -47,7 +29,8 @@ app.conf.beat_schedule = {
     'slack-heartbeat-60-min': {
         'task': 'proj.notification_actions.slack_message',
         'schedule': crontab(minute=15, hour='*/1'),
-        'args': (':heart: Heartbeat - Uploads Manager {0}'.format(WORKER_NAME),)
+        'args':
+        (':heart: Heartbeat - Uploads Manager {0}'.format(WORKER_NAME), )
     },
     # Every hour on the hour
     'batch-hourly': {

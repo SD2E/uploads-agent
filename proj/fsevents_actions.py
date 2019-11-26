@@ -50,11 +50,22 @@ def fsevent_create(self, event):
 
 @app.task(bind=True, time_limit=3600)
 def fsevent_get_key_id(self, record_id):
-    """Get key for the designated filesystem record
+    """Get key for the designated filesystem record by object ID
     """
     dbc = db_collection()
     _id = ObjectId(record_id)
     record = dbc.find_one({"_id": _id})
+    key = record.get('body', {}).get('Key', None)
+    event_id = record.get('id', None)
+    return (key, event_id)
+
+
+@app.task(bind=True, time_limit=3600)
+def fsevent_get_key_eid(self, record_id):
+    """Get key for the designated filesystem record by event ID
+    """
+    dbc = db_collection()
+    record = dbc.find_one({"id": record_id})
     key = record.get('body', {}).get('Key', None)
     event_id = record.get('id', None)
     return (key, event_id)

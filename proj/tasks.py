@@ -12,9 +12,11 @@ from .config import settings
 
 # Workflow components
 from .actors_actions import upload_launch, upload_monitor
-from .fsevents_actions import fsevent_create, fsevent_get_key_id
+from .fsevents_actions import (fsevent_create, fsevent_get_key_id, fsevent_log,
+                               fsevent_update, fsevent_get_key_eid)
 from .notification_actions import (notify_success, notify_system_error,
                                    notify_failure, notify_system_ready)
+from . import fsevents
 
 NAME = 'mproc'
 
@@ -25,7 +27,7 @@ def noop(*args):
 
 
 @app.task(bind=True, max_retries=60, default_retry_delay=15 * 60)
-def process_fsevent_wkflw(self, event):
+def process_fsevent(self, event):
     """Workflow for processing a filesystem event
 
     Must complete successfully witih 60 attempts spaced 15m apart
@@ -44,11 +46,30 @@ def process_fsevent_wkflw(self, event):
         raise self.retry(exc=exc)
 
 
+@app.task(bind=True, max_retries=5, default_retry_delay=30)
+def reprocess_fsevent(self, event_id):
+    """Workflow for re-processing a filesystem event
+    """
+    jobs = chain([
+        fsevent_log.si(
+            (event_id, fsevents.REPROCESS, 'Reprocessing requested')),
+        fsevent_update.si((event_id, fsevents.CREATED)),
+        fsevent_get_key_eid.si(event_id),
+        upload_launch.s(),
+        upload_monitor.s(),
+        noop.s()
+    ])
+    try:
+        jobs.apply_async()
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
+
 def handle_event(channel, method_frame, properties, body):
     """Routes tasks from proj.tasks.consume to the processing workflow
     """
     event = json.loads(body)
-    process_fsevent_wkflw.delay(event)
+    process_fsevent.delay(event)
     # process.apply_async((event), countdown=3)
     channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
