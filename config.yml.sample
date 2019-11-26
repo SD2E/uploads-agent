@@ -74,3 +74,9 @@ notifications:
 requests:
   connect_timeout: 5.0
   read_timeout: 30.0
+statusio:
+  statuspage_id: c2f04ddebadcf59e4aef8b0d
+  component: f2bb96e6ea9e8ddd47056dd0
+  container: 5a9369b0df554034d73e471a
+  api_id: 3936579f-475d-846a-cf06663975f7
+  api_key: /viWhHorAXmy1hZ6MicJoLV94DsaBhwujKR9j4k7T3nXD3XvDhpLrAOWJm2AdhBpw0SSV1bNaXEbgdRuh2xfOQ==

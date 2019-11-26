@@ -52,6 +52,12 @@ Slack by ``config.yml#slack``. As these are mediated by web service APIs
 (and to prevent filling people's inboxes), these calls are rate-limited.
 These rates are configurable by editing the task definitions.
 
+Status.IO
+~~~~~~~~~
+
+The system is also capable of sending Status.IO notifications on its own behalf.
+Configuration is via ``config.yml#statusio``.
+
 Periodic Tasks
 --------------
 

@@ -6,13 +6,23 @@ from .celery import app
 from .config import settings
 
 
+@app.task(bind=True)
+def notify_heartbeat(self):
+    """Send a heartbeat notification
+    """
+    msg = ':heart: Heartbeat - Uploads Manager'
+    notifications = group(slack_message.s(msg))
+    notifications.apply_async()
+    return True
+
+
 @app.task(bind=True, rate_limit='4/h')
 def notify_system_ready(self):
     """Notify stakeholders that the system is ready for action
     """
     msg = 'Uploads-Manager is ready to accept uploads'
     # Run notifications in parallel
-    notifications = group(slack_message.s(msg))
+    notifications = group(slack_message.s(msg), statusio_message.s('UP'))
     notifications.apply_async()
     return True
 
@@ -25,7 +35,8 @@ def notify_system_error(self, message=None):
     if message is not None:
         msg = msg + ' ({})'.format(message)
     # Run notifications in parallel
-    notifications = group(mailgun_message.s(msg), slack_message.s(msg))
+    notifications = group(mailgun_message.s(msg), slack_message.s(msg),
+                          statusio_message.s('DOWN'))
     notifications.apply_async()
     return True
 
@@ -85,7 +96,7 @@ def mailgun_message(self,
         request.raise_for_status()
         return request.status_code
     else:
-        return 200
+        return 'Skipped'
 
 
 @app.task(bind=True, rate_limit='1000/h')
@@ -126,4 +137,52 @@ def slack_message(self,
         except Exception:
             raise
     else:
-        return 200
+        return 'Skipped'
+
+
+@app.task(bind=True, rate_limit='12/h')
+def statusio_message(self, status, message=None):
+    """Updates the Status.IO report for Uploads Manager
+    """
+
+    webhook_url = 'https://api.status.io/v2/component/status/update'
+
+    if message is None:
+        message = 'Status was automatically updated'
+
+    STATUS_IO_CODES = {'UP': 100, 'DOWN': 500}
+    if status in STATUS_IO_CODES:
+        status = STATUS_IO_CODES[status]
+    else:
+        status = 100
+
+    headers = {
+        'x-api-id': settings['statusio']['api_id'],
+        'x-api-key': settings['statusio']['api_key']
+    }
+
+    payload = {
+        'statuspage_id': settings['statusio']['statuspage_id'],
+        'component': settings['statusio']['component'],
+        'container': settings['statusio']['container'],
+        'details': message,
+        'current_status': status
+    }
+
+    # Allow Status.IO notifications to be admnistratively disabled
+    if settings['notifications']['statusio']:
+        r = requests.post(
+            webhook_url,
+            json=payload,
+            headers=headers,
+            timeout=(settings['requests']['connect_timeout'],
+                     settings['requests']['read_timeout'])).content
+        try:
+            # request.raise_for_status()
+            return r.decode('ascii')
+        except AttributeError:
+            return -1
+        except Exception:
+            raise
+    else:
+        return 'Skipped'

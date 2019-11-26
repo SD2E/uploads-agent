@@ -25,12 +25,10 @@ app.conf.update(result_expires=36000, )
 
 # Set up beat schedule
 app.conf.beat_schedule = {
-    # Standalone beat task - confirms the scheduler is running
-    'slack-heartbeat-60-min': {
-        'task': 'proj.notification_actions.slack_message',
-        'schedule': crontab(minute=15, hour='*/1'),
-        'args':
-        (':heart: Heartbeat - Uploads Manager {0}'.format(WORKER_NAME), )
+    # Confirms the scheduler is running
+    'heartbeat-hourly': {
+        'task': 'proj.notification_actions.notify_heartbeat',
+        'schedule': crontab(minute=15, hour='*/1')
     },
     # Every hour on the hour
     'batch-hourly': {
