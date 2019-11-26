@@ -12,8 +12,6 @@ services:
       - RABBITMQ_VHOST=monitor
       - RABBITMQ_WORKER_NAME=worker1
       - CELERY_RESULT_BACKEND=redis://redis:6379
-    networks:
-      - app-tier
     entrypoint: celery -A proj worker --beat -Ofair -l debug -n worker1@%h
   celery_w2:
     extends: celery_w1
@@ -46,14 +44,16 @@ services:
       - celery_w1
     environment:
       - FLOWER_USERNAME=sd2e
-      - FLOWER_PASSWORD=zxxnVNVLP8SCqcBkVY8pBawNkCeUFrBb
-    networks:
-      - app-tier
+      - FLOWER_PASSWORD=YDB3AdVLr5SZRxNxdFE46MVU
+      - VIRTUAL_HOST=upmon.sd2e.org
+      - VIRTUAL_PORT=5555
+      - LETSENCRYPT_HOST=upmon.sd2e.org
+      - LETSENCRYPT_EMAIL=admin@sd2e.org
     ports:
       - "5555:5555"
     entrypoint: celery -A proj flower -l info --basic_auth=sd2e:zxxnVNVLP8SCqcBkVY8pBawNkCeUFrBb
     healthcheck:
-      test: curl --fail -s http://sd2e:zxxnVNVLP8SCqcBkVY8pBawNkCeUFrBb@localhost:5555/ || exit 1
+      test: curl --fail -s http://sd2e:YDB3AdVLr5SZRxNxdFE46MVU@localhost:5555/ || exit 1
       interval: 1m30s
       timeout: 10s
       retries: 3
@@ -67,14 +67,7 @@ services:
       # The rabbitMQ management plugin - running on http://localhost:15672
       - "15672:15672"
       - "5672:5672"
-    networks:
-      - app-tier
   redis:
     image: bitnami/redis:latest
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
-    networks:
-      - app-tier
-networks:
-  app-tier:
-    driver: bridge
